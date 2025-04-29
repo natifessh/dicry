@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, io::{BufRead, BufReader, BufWriter, Read}, ops::{Div, Index, Mul}};
+use std::{env, fs::{self, File}, io::{BufRead, BufReader, BufWriter, Read}, ops::{Div, Index, Mul}};
 //a struct we are going to use as a  class which has a field words which will be filled by the words from a given text file to its constructor
 #[derive(Debug,Deserialize)]
 struct Dictionary{
@@ -20,6 +20,7 @@ impl Dictionary {
     fn binary_search(&mut self,word:&String)->Option<i32>{
         let mut left=0;
         let mut right=self.words.len() as i32;
+        self.words.sort();
         let mut index=0;
         while left<right {
             let mut mid=(left+right)/2 as i32;
@@ -87,9 +88,10 @@ use actix_cors::*;
 
 #[actix_web::main]
 async fn main()->std::io::Result<(),>{
+    let port = env::var("PORT").unwrap_or_else(|_| String::from("8080"));
    HttpServer::new(||{
     let cors=Cors::default()
-    .allowed_origin("http://localhost:3000")
+    .allow_any_origin()
     .allowed_methods(vec![Method::GET])
     .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
     .allowed_header(http::header::CONTENT_TYPE)
@@ -99,7 +101,7 @@ async fn main()->std::io::Result<(),>{
    
     .service(get_word)
    })
-    .bind("127.0.0.1:8080")?
+    .bind(format!("0.0.0.0:{}",port))?
     .run()
     .await
 
