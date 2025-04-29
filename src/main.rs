@@ -8,14 +8,16 @@ struct Dictionary{
 impl Dictionary {
     //constructor
     fn from(file_path:String)->Self{
-        let mut file=File::open(file_path).unwrap();
-        let reader=BufReader::new(file);
-        let mut words=Vec::new();
-        for line in reader.lines(){
-            words.push(line.unwrap());
-        }
+        let file = File::open(file_path).unwrap();
+        let reader = BufReader::new(file);
+        let mut words = reader
+            .lines()
+            .filter_map(Result::ok)
+            .map(|w| w.to_lowercase())
+            .collect::<Vec<_>>();
+    
         words.sort();
-        Dictionary { words: words }
+        Dictionary { words }
     }
     //method to check the existence of the word from the vector that was filled from the given path or text file
     fn binary_search(&mut self,word:&String)->Option<i32>{
@@ -24,23 +26,27 @@ impl Dictionary {
         let mut index=0;
         while left<=right {
             let mut mid=(left+right)/2 ;
-            match self.words[mid as usize].cmp(&word) {
+            match self.words[mid as usize].cmp(&word.to_lowercase()) {
                 std::cmp::Ordering::Equal=>return  Some(mid),
-                std::cmp::Ordering::Greater=>right=mid,
+                std::cmp::Ordering::Greater=>right=mid-1,
                 std::cmp::Ordering::Less=>left=mid+1      
             }    
         }
        None
     }
     // an aysnc method that will fetch the meaning of the word from the api and return the response in a json format with []
-   async fn get_meaning(&mut self,word:String)->Vec<Word>{
-    reqwest::get(format!("https://api.dictionaryapi.dev/api/v2/entries/en/{}", word))
-    .await
-    .unwrap()
-    .json::<Vec<Word>>()
-    .await
-    .unwrap()
-   }
+    async fn get_meaning(&mut self, word: String) -> Option<Vec<Word>> {
+        let url = format!("https://api.dictionaryapi.dev/api/v2/entries/en/{}", word.to_lowercase());
+        let response = reqwest::get(&url).await.ok()?;
+    
+        if response.status().is_success() {
+            let word = response.json::<Vec<Word>>().await.ok()?;
+            Some(word)
+        } else {
+            None
+        }
+    }
+    
 }
 
 //Structs to handle the api respone we going to call and modify them to a structure we want
@@ -72,15 +78,17 @@ meanings":[{"partOfSpeech":"noun","definitions":[{"definition":"A common, round 
 //to use the methods above of the dictionary struct we initiallized a an obeject of type dictionary here...
 // this simple route will handle a simple http request by extracting the word provided in the url
 #[get("/{word}")]
-async  fn get_word(word:web::Path<String>)->impl Responder{
-    let word=word.into_inner();
-    let mut resp:Vec<Word>=vec![];
-    let mut  dictionary=Dictionary::from("words_alpha.txt".to_string());
-    if dictionary.binary_search(&word).is_some(){
-         resp=dictionary.get_meaning(word).await;
+async fn get_word(word: web::Path<String>) -> impl Responder {
+    let word = word.into_inner().to_lowercase();
+    let mut dictionary = Dictionary::from("words_alpha.txt".to_string());
+    if dictionary.binary_search(&word).is_some() {
+        if let Some(resp) = dictionary.get_meaning(word).await {
+            return web::Json(resp);
+        }
     }
-    web::Json(resp)
+    web::Json(Vec::<Word>::new()) 
 }
+
 use actix_web::{dev::Path, *};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
@@ -98,7 +106,6 @@ async fn main()->std::io::Result<(),>{
     .max_age(3000);
     App::new()
     .wrap(cors)
-   
     .service(get_word)
    })
     .bind(format!("0.0.0.0:{}",port))?
