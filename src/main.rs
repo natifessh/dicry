@@ -14,16 +14,16 @@ impl Dictionary {
         for line in reader.lines(){
             words.push(line.unwrap());
         }
+        words.sort();
         Dictionary { words: words }
     }
     //method to check the existence of the word from the vector that was filled from the given path or text file
     fn binary_search(&mut self,word:&String)->Option<i32>{
         let mut left=0;
-        let mut right=self.words.len() as i32;
-        self.words.sort();
+        let mut right=self.words.len() as i32 -1;
         let mut index=0;
-        while left<right {
-            let mut mid=(left+right)/2 as i32;
+        while left<=right {
+            let mut mid=(left+right)/2 ;
             match self.words[mid as usize].cmp(&word) {
                 std::cmp::Ordering::Equal=>return  Some(mid),
                 std::cmp::Ordering::Greater=>right=mid,
