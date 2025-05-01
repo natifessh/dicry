@@ -39,7 +39,7 @@ function App() {
     setError(false)
     setResponse({})
     try{
-      const response=await api.get(`/${value.toLowerCase()}`);
+      const response=await api.get(`/${value.trim().toLowerCase()}`);
       const data= await response.data;
       setResponse(data[0])
       console.log(data[0])
@@ -126,21 +126,6 @@ function Word({ word, error,setError }) {
     </div>
   ))}
 </Card.Body>
-
-
-   {/*  {entry?.phonetics?.map((phonetic, idx) => (
-      
-
-
-       <Col key={idx} style={{ marginBottom: '8px' }}>
-        {phonetic.text && <span>{phonetic.text} </span>}
-        {phonetic.audio && (
-          <audio controls src={phonetic.audio} style={{ marginLeft: '10px' }}>
-            Your browser does not support the audio element.
-          </audio>
-        )}
-      </Col> 
-  ))} */}
 </Card.Subtitle>
 
         {entry?.meanings?.slice(0, 4).map((meaning, idx) => (
